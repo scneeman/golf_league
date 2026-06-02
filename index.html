@@ -431,13 +431,13 @@
             if (partner) partner.partnerId = null;
         }
         
-        players = players.filter(p => slope => p.id !== id);
+        players = players.filter(p => p.id !== id);
         if (editingPlayerId === id) resetForm();
         renderPlayerList();
     };
 
 
-    // --- BALANCING & ANTI-CLUSTERING ALGORITHM ---
+    // --- MATRIX-DRAFTING COMPOSITION ENGINE ---
 
     document.getElementById('btn-done-3').addEventListener('click', () => { currentPrioritySize = 3; generateGroups(); });
     document.getElementById('btn-done-4').addEventListener('click', () => { currentPrioritySize = 4; generateGroups(); });
@@ -457,6 +457,7 @@
         let numGroupsOf4 = 0;
         let numGroupsOf3 = 0;
 
+        // Establish core grouping targets
         if (currentPrioritySize === 4) {
             numGroupsOf4 = Math.floor(totalPlayers / 4);
             let remainder = totalPlayers % 4;
@@ -497,29 +498,7 @@
 
         const totalGroups = numGroupsOf4 + numGroupsOf3;
         
-        let entities = [];
-        let visitedIds = new Set();
-        let shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
-
-        shuffledPlayers.forEach(p => {
-            if (visitedIds.has(p.id)) return;
-
-            if (p.partnerId) {
-                const partner = shuffledPlayers.find(part => part.id === p.partnerId);
-                if (partner) {
-                    entities.push({ type: 'pair', members: [p, partner], flights: [p.flight, partner.flight] });
-                    visitedIds.add(p.id);
-                    visitedIds.add(partner.id);
-                } else {
-                    entities.push({ type: 'single', members: [p], flights: [p.flight] });
-                    visitedIds.add(p.id);
-                }
-            } else {
-                entities.push({ type: 'single', members: [p], flights: [p.flight] });
-                visitedIds.add(p.id);
-            }
-        });
-
+        // Initialize structural group objects
         let groups = [];
         for (let i = 0; i < totalGroups; i++) {
             groups.push({
@@ -528,87 +507,87 @@
             });
         }
 
-        let pairs = entities.filter(e => e.type === 'pair');
-        let singles = entities.filter(e => e.type === 'single');
+        // Isolate pairs to force unified slot assignments first
+        let pairedEntities = [];
+        let processedIds = new Set();
+        let shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
 
-        // Distribute pairs first
-        pairs.forEach(pair => {
-            let targetGroup = groups
-                .filter(g => (g.maxSize - g.members.length) >= 2)
-                .sort((a, b) => scoreGroupFlightBalance(a, pair.flights) - scoreGroupFlightBalance(b, pair.flights))[0];
-
-            if (!targetGroup) {
-                targetGroup = groups.find(g => (g.maxSize - g.members.length) >= 2) || groups[0];
+        shuffledPlayers.forEach(p => {
+            if (processedIds.has(p.id)) return;
+            if (p.partnerId) {
+                const partner = shuffledPlayers.find(part => part.id === p.partnerId);
+                if (partner) {
+                    pairedEntities.push([p, partner]);
+                    processedIds.add(p.id);
+                    processedIds.add(partner.id);
+                }
             }
-            if(targetGroup) targetGroup.members.push(...pair.members);
         });
 
-        // Separate and isolate individual single golfers by flight
-        let remainingSingles = [];
-        singles.forEach(s => remainingSingles.push(s.members[0]));
-        
+        // Anchor pairs into groups with room
+        pairedEntities.forEach(pair => {
+            let availableGroup = groups.find(g => (g.maxSize - g.members.length) >= 2);
+            if (availableGroup) {
+                availableGroup.members.push(...pair);
+            }
+        });
+
+        // Pool all remaining single players by flight
         let flightBuckets = { 'A': [], 'B': [], 'C': [], 'D': [] };
-        remainingSingles.forEach(s => flightBuckets[s.flight].push(s));
+        shuffledPlayers.forEach(p => {
+            if (!processedIds.has(p.id)) {
+                flightBuckets[p.flight].push(p);
+            }
+        });
+
+        // Randomize internal buckets
         Object.keys(flightBuckets).forEach(f => flightBuckets[f].sort(() => Math.random() - 0.5));
 
-        // Round-robin flattening to pull from alternating tiers
-        let balancedSinglesList = [];
+        // Create a single master sequence prioritizing dispersion: A -> B -> C -> D round robin
+        let masterDraftList = [];
         let tiers = ['A', 'B', 'C', 'D'];
-        let itemsLeft = true;
-        while (itemsLeft) {
-            itemsLeft = false;
+        let active = true;
+        while (active) {
+            active = false;
             tiers.forEach(t => {
                 if (flightBuckets[t].length > 0) {
-                    balancedSinglesList.push(flightBuckets[t].pop());
-                    itemsLeft = true;
+                    masterDraftList.push(flightBuckets[t].pop());
+                    active = true;
                 }
             });
         }
 
-        // Slot remaining single players applying the strict anti-clustering penalty rules
-        balancedSinglesList.forEach(single => {
-            let targetGroup = groups
-                .filter(g => g.members.length < g.maxSize)
-                .sort((a, b) => scoreGroupFlightBalance(a, [single.flight]) - scoreGroupFlightBalance(b, [single.flight]))[0];
+        // MATRIX DISPERSION DRAFT: 
+        // Loop through the master balanced list and place single players into groups.
+        // It actively prioritizes putting them in a group that DOES NOT have that flight yet.
+        masterDraftList.forEach(player => {
+            // Step 1: Look for a group with space that has ZERO players of this flight
+            let bestGroup = groups.find(g => 
+                g.members.length < g.maxSize && 
+                !g.members.some(m => m.flight === player.flight)
+            );
 
-            if (targetGroup) {
-                targetGroup.members.push(single);
-            } else {
-                let openGroup = groups.find(g => g.members.length < g.maxSize);
-                if (openGroup) openGroup.members.push(single);
+            // Step 2: Fallback to a group that only has 1 player of this flight
+            if (!bestGroup) {
+                bestGroup = groups.find(g => 
+                    g.members.length < g.maxSize && 
+                    g.members.filter(m => m.flight === player.flight).length === 1
+                );
+            }
+
+            // Step 3: Absolute fallback (if flights are extremely skewed numerically)
+            if (!bestGroup) {
+                bestGroup = groups.find(g => g.members.length < g.maxSize);
+            }
+
+            if (bestGroup) {
+                bestGroup.members.push(player);
             }
         });
 
         renderGroups(groups);
         page1.classList.add('hidden');
         page2.classList.remove('hidden');
-    }
-
-    // Upgraded Scoring logic: Evaluates dispersion while implementing severe penalties for duplicates
-    function scoreGroupFlightBalance(group, incomingFlights) {
-        const flightValues = { 'A': 4, 'B': 3, 'C': 2, 'D': 1 };
-        let currentMembers = group.members;
-        
-        let score = 0;
-
-        // ANTI-CLUSTERING RULE: Count occurrences of matching flights
-        incomingFlights.forEach(incomingFlight => {
-            const matches = currentMembers.filter(m => m.flight === incomingFlight).length;
-            if (matches > 0) {
-                // Apply exponential dynamic penalty score to push duplicates down selection priority
-                score += (matches * 50); 
-            }
-        });
-
-        if (currentMembers.length === 0) return score;
-
-        // Basic distribution variance metric (keep group's mean talent balanced near average)
-        let currentSum = currentMembers.reduce((sum, m) => sum + flightValues[m.flight], 0);
-        let incomingSum = incomingFlights.reduce((sum, f) => sum + flightValues[f], 0);
-        let prospectiveAvg = (currentSum + incomingSum) / (currentMembers.length + incomingFlights.length);
-
-        score += Math.abs(prospectiveAvg - 2.5) * 5;
-        return score;
     }
 
     function renderGroups(groups) {
