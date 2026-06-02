@@ -431,13 +431,13 @@
             if (partner) partner.partnerId = null;
         }
         
-        players = players.filter(p => p.id !== id);
+        players = players.filter(p => slope => p.id !== id);
         if (editingPlayerId === id) resetForm();
         renderPlayerList();
     };
 
 
-    // --- BALANCING & COMPOSITION ALGORITHM ---
+    // --- BALANCING & ANTI-CLUSTERING ALGORITHM ---
 
     document.getElementById('btn-done-3').addEventListener('click', () => { currentPrioritySize = 3; generateGroups(); });
     document.getElementById('btn-done-4').addEventListener('click', () => { currentPrioritySize = 4; generateGroups(); });
@@ -531,6 +531,7 @@
         let pairs = entities.filter(e => e.type === 'pair');
         let singles = entities.filter(e => e.type === 'single');
 
+        // Distribute pairs first
         pairs.forEach(pair => {
             let targetGroup = groups
                 .filter(g => (g.maxSize - g.members.length) >= 2)
@@ -542,6 +543,7 @@
             if(targetGroup) targetGroup.members.push(...pair.members);
         });
 
+        // Separate and isolate individual single golfers by flight
         let remainingSingles = [];
         singles.forEach(s => remainingSingles.push(s.members[0]));
         
@@ -549,6 +551,7 @@
         remainingSingles.forEach(s => flightBuckets[s.flight].push(s));
         Object.keys(flightBuckets).forEach(f => flightBuckets[f].sort(() => Math.random() - 0.5));
 
+        // Round-robin flattening to pull from alternating tiers
         let balancedSinglesList = [];
         let tiers = ['A', 'B', 'C', 'D'];
         let itemsLeft = true;
@@ -562,6 +565,7 @@
             });
         }
 
+        // Slot remaining single players applying the strict anti-clustering penalty rules
         balancedSinglesList.forEach(single => {
             let targetGroup = groups
                 .filter(g => g.members.length < g.maxSize)
@@ -580,17 +584,31 @@
         page2.classList.remove('hidden');
     }
 
+    // Upgraded Scoring logic: Evaluates dispersion while implementing severe penalties for duplicates
     function scoreGroupFlightBalance(group, incomingFlights) {
         const flightValues = { 'A': 4, 'B': 3, 'C': 2, 'D': 1 };
         let currentMembers = group.members;
         
-        if (currentMembers.length === 0) return 0;
+        let score = 0;
 
+        // ANTI-CLUSTERING RULE: Count occurrences of matching flights
+        incomingFlights.forEach(incomingFlight => {
+            const matches = currentMembers.filter(m => m.flight === incomingFlight).length;
+            if (matches > 0) {
+                // Apply exponential dynamic penalty score to push duplicates down selection priority
+                score += (matches * 50); 
+            }
+        });
+
+        if (currentMembers.length === 0) return score;
+
+        // Basic distribution variance metric (keep group's mean talent balanced near average)
         let currentSum = currentMembers.reduce((sum, m) => sum + flightValues[m.flight], 0);
         let incomingSum = incomingFlights.reduce((sum, f) => sum + flightValues[f], 0);
         let prospectiveAvg = (currentSum + incomingSum) / (currentMembers.length + incomingFlights.length);
 
-        return Math.abs(prospectiveAvg - 2.5);
+        score += Math.abs(prospectiveAvg - 2.5) * 5;
+        return score;
     }
 
     function renderGroups(groups) {
@@ -602,7 +620,6 @@
             
             let membersHtml = '';
             group.members.forEach(m => {
-                // Apply Title Case here during group generation view
                 const titleCasedName = toTitleCase(m.name);
                 
                 membersHtml += `
