@@ -184,8 +184,7 @@
         
         <h3>Registered Golfers</h3>
         <div id="player-list">
-            <p style="color: #777; text-align: center;">No golfers added yet.</p>
-        </div>
+            </div>
 
         <div class="form-row" id="golfer-form">
             <div class="form-group">
@@ -241,8 +240,16 @@
 </div>
 
 <script>
-    // State Tracking
-    let players = [];
+    // State Tracking - Pre-populated with your list
+    let players = [
+        { id: 1, name: "Scott N", flight: "B", partnerId: null },
+        { id: 2, name: "Scott P", flight: "B", partnerId: null },
+        { id: 3, name: "Tim S", flight: "B", partnerId: null },
+        { id: 4, name: "Rick S", flight: "B", partnerId: null },
+        { id: 5, name: "Rick A", flight: "A", partnerId: null },
+        { id: 6, name: "Garret S", flight: "A", partnerId: null }
+    ];
+    
     let editingPlayerId = null;
     let currentPrioritySize = 4;
 
@@ -257,6 +264,9 @@
     const partnerSelect = document.getElementById('partner-select');
     const btnAddGolfer = document.getElementById('btn-add-golfer');
     const groupsContainer = document.getElementById('groups-container');
+
+    // Run initial render to display the starting list immediately
+    renderPlayerList();
 
     // Helper function to force Title Case strings
     function toTitleCase(str) {
@@ -457,7 +467,6 @@
         let numGroupsOf4 = 0;
         let numGroupsOf3 = 0;
 
-        // Establish core grouping targets
         if (currentPrioritySize === 4) {
             numGroupsOf4 = Math.floor(totalPlayers / 4);
             let remainder = totalPlayers % 4;
@@ -498,7 +507,6 @@
 
         const totalGroups = numGroupsOf4 + numGroupsOf3;
         
-        // Initialize structural group objects
         let groups = [];
         for (let i = 0; i < totalGroups; i++) {
             groups.push({
@@ -507,7 +515,6 @@
             });
         }
 
-        // Isolate pairs to force unified slot assignments first
         let pairedEntities = [];
         let processedIds = new Set();
         let shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
@@ -524,7 +531,6 @@
             }
         });
 
-        // Anchor pairs into groups with room
         pairedEntities.forEach(pair => {
             let availableGroup = groups.find(g => (g.maxSize - g.members.length) >= 2);
             if (availableGroup) {
@@ -532,7 +538,6 @@
             }
         });
 
-        // Pool all remaining single players by flight
         let flightBuckets = { 'A': [], 'B': [], 'C': [], 'D': [] };
         shuffledPlayers.forEach(p => {
             if (!processedIds.has(p.id)) {
@@ -540,10 +545,8 @@
             }
         });
 
-        // Randomize internal buckets
         Object.keys(flightBuckets).forEach(f => flightBuckets[f].sort(() => Math.random() - 0.5));
 
-        // Create a single master sequence prioritizing dispersion: A -> B -> C -> D round robin
         let masterDraftList = [];
         let tiers = ['A', 'B', 'C', 'D'];
         let active = true;
@@ -557,17 +560,12 @@
             });
         }
 
-        // MATRIX DISPERSION DRAFT: 
-        // Loop through the master balanced list and place single players into groups.
-        // It actively prioritizes putting them in a group that DOES NOT have that flight yet.
         masterDraftList.forEach(player => {
-            // Step 1: Look for a group with space that has ZERO players of this flight
             let bestGroup = groups.find(g => 
                 g.members.length < g.maxSize && 
                 !g.members.some(m => m.flight === player.flight)
             );
 
-            // Step 2: Fallback to a group that only has 1 player of this flight
             if (!bestGroup) {
                 bestGroup = groups.find(g => 
                     g.members.length < g.maxSize && 
@@ -575,7 +573,6 @@
                 );
             }
 
-            // Step 3: Absolute fallback (if flights are extremely skewed numerically)
             if (!bestGroup) {
                 bestGroup = groups.find(g => g.members.length < g.maxSize);
             }
