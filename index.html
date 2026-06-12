@@ -43,7 +43,7 @@
 
         /* Page 1 Styles */
         #player-list {
-            margin-bottom: 30px;
+            margin-bottom: 10px;
             border: 1px solid var(--border);
             border-radius: 6px;
             background: var(--secondary);
@@ -66,6 +66,14 @@
 
         .player-item:last-child {
             margin-bottom: 0;
+        }
+
+        .player-counter {
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 25px;
+            padding-left: 5px;
+            font-size: 0.95rem;
         }
 
         .form-row {
@@ -185,6 +193,9 @@
         <h3>Registered Golfers</h3>
         <div id="player-list">
             </div>
+        <div class="player-counter" id="total-player-count">
+            Total Players: 0
+        </div>
 
         <div class="form-row" id="golfer-form">
             <div class="form-group">
@@ -240,14 +251,41 @@
 </div>
 
 <script>
-    // State Tracking - Pre-populated with your list
+    // State Tracking - Pre-populated list with your updated 33 players
     let players = [
-        { id: 1, name: "Scott N", flight: "B", partnerId: null },
-        { id: 2, name: "Scott P", flight: "B", partnerId: null },
-        { id: 3, name: "Tim S", flight: "B", partnerId: null },
-        { id: 4, name: "Rick S", flight: "B", partnerId: null },
-        { id: 5, name: "Rick A", flight: "A", partnerId: null },
-        { id: 6, name: "Garret S", flight: "A", partnerId: null }
+        { id: 101, name: "Al C", flight: "C", partnerId: null },
+        { id: 102, name: "Bill E", flight: "B", partnerId: null },
+        { id: 103, name: "Blaine F", flight: "A", partnerId: null },
+        { id: 104, name: "Brad B", flight: "C", partnerId: null },
+        { id: 105, name: "Brian S", flight: "C", partnerId: null },
+        { id: 106, name: "Chad J", flight: "B", partnerId: null },
+        { id: 107, name: "Cletus I", flight: "B", partnerId: null },
+        { id: 108, name: "Dave C", flight: "C", partnerId: null },
+        { id: 109, name: "Garrett K", flight: "A", partnerId: null },
+        { id: 110, name: "Gary A", flight: "A", partnerId: null },
+        { id: 111, name: "Geoff K", flight: "B", partnerId: null },
+        { id: 112, name: "Jalen M", flight: "B", partnerId: null },
+        { id: 113, name: "James B", flight: "C", partnerId: null },
+        { id: 114, name: "Jeff W", flight: "B", partnerId: null },
+        { id: 115, name: "Jeremie H", flight: "C", partnerId: null },
+        { id: 116, name: "Joe C", flight: "B", partnerId: null },
+        { id: 117, name: "Joe R", flight: "B", partnerId: null },
+        { id: 118, name: "John B", flight: "A", partnerId: null },
+        { id: 119, name: "Johnny R", flight: "C", partnerId: null },
+        { id: 120, name: "Jordan R", flight: "B", partnerId: null },
+        { id: 121, name: "Lester J", flight: "C", partnerId: null },
+        { id: 122, name: "Nathan S", flight: "C", partnerId: null },
+        { id: 123, name: "Randy K", flight: "B", partnerId: null },
+        { id: 124, name: "Ransome", flight: "C", partnerId: null },
+        { id: 125, name: "Rick R", flight: "A", partnerId: null },
+        { id: 126, name: "Rick S", flight: "B", partnerId: null },
+        { id: 127, name: "Robbie R", flight: "A", partnerId: null },
+        { id: 128, name: "Scott G", flight: "B", partnerId: null },
+        { id: 129, name: "Scott N", flight: "C", partnerId: null },
+        { id: 130, name: "Tim S", flight: "B", partnerId: null },
+        { id: 131, name: "Tom B", flight: "B", partnerId: null },
+        { id: 132, name: "Tony S", flight: "C", partnerId: null },
+        { id: 133, name: "Zack P", flight: "A", partnerId: null }
     ];
     
     let editingPlayerId = null;
@@ -257,6 +295,7 @@
     const page1 = document.getElementById('page-1');
     const page2 = document.getElementById('page-2');
     const playerListDiv = document.getElementById('player-list');
+    const playerCounterDiv = document.getElementById('total-player-count');
     const golferNameInput = document.getElementById('golfer-name');
     const golferFlightSelect = document.getElementById('golfer-flight');
     const hasPartnerCheckbox = document.getElementById('has-partner');
@@ -371,6 +410,9 @@
 
     // Render running registration screen list
     function renderPlayerList() {
+        // Dynamically update total register count text node
+        playerCounterDiv.textContent = `Total Players: ${players.length}`;
+
         if (players.length === 0) {
             playerListDiv.innerHTML = '<p style="color: #777; text-align: center;">No golfers added yet.</p>';
             return;
