@@ -343,3 +343,20 @@
         players.forEach(p => {
             const div = document.createElement('div');
             div.className = 'player-item';
+            div.innerHTML = `<div><strong>${p.name}</strong> <span class="flight-badge">${p.flight}</span></div>
+                             <div><button class="btn-edit" onclick="editPlayer(${p.id})">Edit</button>
+                             <button class="btn-danger" onclick="deletePlayer(${p.id})">X</button></div>`;
+            playerListDiv.appendChild(div);
+        });
+    }
+
+    window.deletePlayer = (id) => { players = players.filter(p => p.id !== id); renderPlayerList(); };
+    window.editPlayer = (id) => { 
+        const p = players.find(x => x.id === id);
+        golferNameInput.value = p.name;
+        golferFlightSelect.value = p.flight;
+        editingPlayerId = id;
+        btnAddGolfer.textContent = "Update";
+    };
+
+    document.
