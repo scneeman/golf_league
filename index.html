@@ -221,8 +221,8 @@
         <h1>Generated Groups</h1>
         <div class="groups-grid" id="groups-container"></div>
         <div class="action-buttons">
+            <button type="button" class="btn-primary" id="btn-back">Home / Edit Players</button>
             <button type="button" class="btn-primary" id="btn-shuffle">Shuffle & Rebalance</button>
-            <button type="button" class="btn-edit" id="btn-back">Go Back & Edit Players</button>
         </div>
     </div>
 </div>
@@ -343,101 +343,3 @@
         players.forEach(p => {
             const div = document.createElement('div');
             div.className = 'player-item';
-            div.innerHTML = `<div><strong>${p.name}</strong> <span class="flight-badge">${p.flight}</span></div>
-                             <div><button class="btn-edit" onclick="editPlayer(${p.id})">Edit</button>
-                             <button class="btn-danger" onclick="deletePlayer(${p.id})">X</button></div>`;
-            playerListDiv.appendChild(div);
-        });
-    }
-
-    window.deletePlayer = (id) => { players = players.filter(p => p.id !== id); renderPlayerList(); };
-    window.editPlayer = (id) => { 
-        const p = players.find(x => x.id === id);
-        golferNameInput.value = p.name;
-        golferFlightSelect.value = p.flight;
-        editingPlayerId = id;
-        btnAddGolfer.textContent = "Update";
-    };
-
-    document.getElementById('btn-done-3').onclick = () => { currentPrioritySize = 3; generate(); };
-    document.getElementById('btn-done-4').onclick = () => { currentPrioritySize = 4; generate(); };
-    document.getElementById('btn-shuffle').onclick = () => generate();
-    document.getElementById('btn-back').onclick = () => { document.getElementById('page-2').classList.add('hidden'); document.getElementById('page-1').classList.remove('hidden'); };
-
-    function generate() {
-        const total = players.length;
-        if (!total) return;
-
-        let n4 = 0, n3 = 0;
-        if (currentPrioritySize === 4) {
-            n4 = Math.floor(total / 4);
-            let rem = total % 4;
-            if (rem === 1 && n4 > 0) { n4--; n3 += 3; }
-            else if (rem === 2 && n4 > 0) { n4--; n3 += 2; }
-            else if (rem === 3) { n3++; }
-        } else {
-            n3 = Math.floor(total / 3);
-            let rem = total % 3;
-            if (rem === 1 && n3 > 0) { n3--; n4++; }
-            else if (rem === 2 && n3 > 1) { n3 -= 2; n4 += 2; }
-        }
-
-        const groups = [];
-        for (let i = 0; i < n4; i++) groups.push({ max: 4, members: [] });
-        for (let i = 0; i < n3; i++) groups.push({ max: 3, members: [] });
-
-        let pool = [...players].sort(() => Math.random() - 0.5);
-        const processed = new Set();
-        
-        // Handle Pairs First
-        pool.forEach(p => {
-            if (processed.has(p.id) || !p.partnerId) return;
-            const partner = pool.find(x => x.id === p.partnerId);
-            if (partner) {
-                const g = groups.find(x => x.max - x.members.length >= 2);
-                if (g) {
-                    g.members.push(p, partner);
-                    processed.add(p.id); processed.add(partner.id);
-                }
-            }
-        });
-
-        // Draft remaining by flight
-        const remaining = pool.filter(p => !processed.has(p.id));
-        const flights = { A: [], B: [], C: [], D: [] };
-        remaining.forEach(p => flights[p.flight].push(p));
-        
-        const draft = [];
-        let hasMore = true;
-        while (hasMore) {
-            hasMore = false;
-            ['A','B','C','D'].forEach(f => { if(flights[f].length) { draft.push(flights[f].pop()); hasMore = true; }});
-        }
-
-        draft.forEach(p => {
-            let g = groups.find(x => x.members.length < x.max && !x.members.some(m => m.flight === p.flight));
-            if (!g) g = groups.find(x => x.members.length < x.max);
-            if (g) g.members.push(p);
-        });
-
-        renderGroups(groups);
-        document.getElementById('page-1').classList.add('hidden');
-        document.getElementById('page-2').classList.remove('hidden');
-    }
-
-    function renderGroups(groups) {
-        groupsContainer.innerHTML = '';
-        groups.forEach((g, i) => {
-            const card = document.createElement('div');
-            card.className = 'group-card';
-            let html = `<h3>Group ${i+1} (${g.members.length}-some)</h3>`;
-            g.members.forEach(m => {
-                html += `<div class="group-member"><span>${toTitleCase(m.name)}</span><span class="flight-badge">${m.flight}</span></div>`;
-            });
-            card.innerHTML = html;
-            groupsContainer.appendChild(card);
-        });
-    }
-</script>
-</body>
-</html>
