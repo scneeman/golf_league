@@ -41,7 +41,6 @@
             display: none !important;
         }
 
-        /* Page 1 Styles */
         #player-list {
             margin-bottom: 10px;
             border: 1px solid var(--border);
@@ -62,10 +61,6 @@
             border-radius: 4px;
             border-left: 5px solid var(--primary);
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-
-        .player-item:last-child {
-            margin-bottom: 0;
         }
 
         .player-counter {
@@ -128,9 +123,7 @@
         .btn-primary { background-color: var(--primary); color: white; }
         .btn-primary:hover { background-color: var(--primary-hover); }
         .btn-danger { background-color: var(--danger); color: white; }
-        .btn-danger:hover { filter: brightness(0.9); }
         .btn-edit { background-color: var(--edit); color: white; }
-        .btn-edit:hover { filter: brightness(0.9); }
         
         .action-buttons {
             display: flex;
@@ -141,7 +134,6 @@
             padding-top: 20px;
         }
 
-        /* Page 2 Styles */
         .groups-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -159,8 +151,7 @@
         }
 
         .group-card h3 {
-            margin-top: 0;
-            margin-bottom: 15px;
+            margin: 0 0 15px 0;
             color: var(--primary);
             border-bottom: 1px solid var(--secondary);
             padding-bottom: 5px;
@@ -186,23 +177,17 @@
 <body>
 
 <div class="container">
-    
     <div id="page-1">
         <h1>Golf League Setup</h1>
-        
         <h3>Registered Golfers</h3>
-        <div id="player-list">
-            </div>
-        <div class="player-counter" id="total-player-count">
-            Total Players: 0
-        </div>
+        <div id="player-list"></div>
+        <div class="player-counter" id="total-player-count">Total Players: 0</div>
 
-        <div class="form-row" id="golfer-form">
+        <div class="form-row">
             <div class="form-group">
                 <label for="golfer-name">Golfer Name</label>
                 <input type="text" id="golfer-name" placeholder="e.g. John Doe">
             </div>
-            
             <div class="form-group">
                 <label for="golfer-flight">Flight</label>
                 <select id="golfer-flight">
@@ -212,16 +197,13 @@
                     <option value="D">D</option>
                 </select>
             </div>
-
             <div class="form-group checkbox-group">
                 <input type="checkbox" id="has-partner">
                 <label for="has-partner">Must be paired with</label>
             </div>
-
             <div class="form-group hidden" id="partner-select-container">
                 <label for="partner-select">Select Partner</label>
-                <select id="partner-select">
-                    </select>
+                <select id="partner-select"></select>
             </div>
         </div>
 
@@ -237,21 +219,15 @@
 
     <div id="page-2" class="hidden">
         <h1>Generated Groups</h1>
-        <p style="text-align: center; color: #666;">Groups are balanced by flight levels (A, B, C, D) while respecting pairings.</p>
-        
-        <div class="groups-grid" id="groups-container">
-            </div>
-
+        <div class="groups-grid" id="groups-container"></div>
         <div class="action-buttons">
             <button type="button" class="btn-primary" id="btn-shuffle">Shuffle & Rebalance</button>
             <button type="button" class="btn-edit" id="btn-back">Go Back & Edit Players</button>
         </div>
     </div>
-
 </div>
 
 <script>
-    // State Tracking - Pre-populated list with your updated 33 players
     let players = [
         { id: 101, name: "Al C", flight: "C", partnerId: null },
         { id: 102, name: "Bill E", flight: "B", partnerId: null },
@@ -261,9 +237,9 @@
         { id: 106, name: "Chad J", flight: "B", partnerId: null },
         { id: 107, name: "Cletus I", flight: "B", partnerId: null },
         { id: 108, name: "Dave C", flight: "C", partnerId: null },
-        { id: 109, name: "Garrett K", flight: "A", partnerId: 111 },
+        { id: 109, name: "Garrett K", flight: "A", partnerId: null },
         { id: 110, name: "Gary A", flight: "A", partnerId: null },
-        { id: 111, name: "Geoff K", flight: "B", partnerId: 109 },
+        { id: 111, name: "Geoff K", flight: "B", partnerId: null },
         { id: 112, name: "Jalen M", flight: "B", partnerId: null },
         { id: 113, name: "James B", flight: "C", partnerId: null },
         { id: 114, name: "Jeff W", flight: "B", partnerId: null },
@@ -291,9 +267,6 @@
     let editingPlayerId = null;
     let currentPrioritySize = 4;
 
-    // DOM Elements
-    const page1 = document.getElementById('page-1');
-    const page2 = document.getElementById('page-2');
     const playerListDiv = document.getElementById('player-list');
     const playerCounterDiv = document.getElementById('total-player-count');
     const golferNameInput = document.getElementById('golfer-name');
@@ -304,17 +277,12 @@
     const btnAddGolfer = document.getElementById('btn-add-golfer');
     const groupsContainer = document.getElementById('groups-container');
 
-    // Run initial render to display the starting list immediately
     renderPlayerList();
 
-    // Helper function to force Title Case strings
     function toTitleCase(str) {
-        return str.toLowerCase().split(' ').map(word => {
-            return word.charAt(0).toUpperCase() + word.slice(1);
-        }).join(' ');
+        return str.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     }
 
-    // Toggle partner dropdown logic
     hasPartnerCheckbox.addEventListener('change', function() {
         if (this.checked) {
             populatePartnerDropdown();
@@ -324,334 +292,149 @@
         }
     });
 
-    // Populate Partner Dropdown with available players
     function populatePartnerDropdown(excludeId = null) {
         partnerSelect.innerHTML = '<option value="">-- Choose Golfer --</option>';
-        
-        const availablePartners = players.filter(p => {
+        const available = players.filter(p => {
             if (editingPlayerId && p.id === editingPlayerId) return false;
-            if (p.id === excludeId) return false;
-            
-            const isTaken = players.some(other => other.partnerId === p.id && other.id !== editingPlayerId);
-            return !isTaken && !p.partnerId;
+            const alreadyPaired = players.some(o => o.partnerId === p.id && o.id !== editingPlayerId);
+            return !alreadyPaired && !p.partnerId;
         });
-
-        availablePartners.forEach(p => {
+        available.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.id;
-            opt.textContent = `${p.name} (Flight ${p.flight})`;
+            opt.textContent = `${p.name} (${p.flight})`;
             partnerSelect.appendChild(opt);
         });
     }
 
-    // Add / Update Golfer
     btnAddGolfer.addEventListener('click', () => {
         const name = golferNameInput.value.trim();
         const flight = golferFlightSelect.value;
         const wantsPartner = hasPartnerCheckbox.checked;
         const partnerId = wantsPartner ? parseInt(partnerSelect.value) : null;
 
-        if (!name) {
-            alert('Please enter a golfer name.');
-            return;
-        }
-
-        if (wantsPartner && !partnerId) {
-            alert('Please select a partner or uncheck the pairing requirement.');
-            return;
-        }
-
-        if (editingPlayerId !== null) {
-            // Update Existing
-            const playerIndex = players.findIndex(p => p.id === editingPlayerId);
-            if (playerIndex !== -1) {
-                const oldPartnerId = players[playerIndex].partnerId;
-                if (oldPartnerId) {
-                    const oldP = players.find(p => p.id === oldPartnerId);
-                    if (oldP) oldP.partnerId = null;
-                }
-
-                players[playerIndex].name = name;
-                players[playerIndex].flight = flight;
-                players[playerIndex].partnerId = partnerId;
-
-                if (partnerId) {
-                    const partnerObj = players.find(p => p.id === partnerId);
-                    if (partnerObj) partnerObj.partnerId = editingPlayerId;
-                }
-            }
+        if (!name) return alert('Enter name');
+        
+        if (editingPlayerId) {
+            const idx = players.findIndex(p => p.id === editingPlayerId);
+            players[idx].name = name;
+            players[idx].flight = flight;
+            players[idx].partnerId = partnerId;
             editingPlayerId = null;
             btnAddGolfer.textContent = "Add Golfer";
         } else {
-            // Create New
-            const newId = Date.now();
-            const newPlayer = { id: newId, name, flight, partnerId };
-            players.push(newPlayer);
-
-            if (partnerId) {
-                const partnerObj = players.find(p => p.id === partnerId);
-                if (partnerObj) partnerObj.partnerId = newId;
-            }
+            players.push({ id: Date.now(), name, flight, partnerId });
         }
-
         resetForm();
         renderPlayerList();
     });
 
     function resetForm() {
         golferNameInput.value = '';
-        golferFlightSelect.value = 'A';
         hasPartnerCheckbox.checked = false;
         partnerSelectContainer.classList.add('hidden');
-        partnerSelect.innerHTML = '';
         editingPlayerId = null;
         btnAddGolfer.textContent = "Add Golfer";
     }
 
-    // Render running registration screen list
     function renderPlayerList() {
-        // Dynamically update total register count text node
         playerCounterDiv.textContent = `Total Players: ${players.length}`;
-
-        if (players.length === 0) {
-            playerListDiv.innerHTML = '<p style="color: #777; text-align: center;">No golfers added yet.</p>';
-            return;
-        }
-
-        playerListDiv.innerHTML = '';
-        players.forEach(player => {
+        playerListDiv.innerHTML = players.length ? '' : '<p>No golfers added.</p>';
+        players.forEach(p => {
             const div = document.createElement('div');
             div.className = 'player-item';
-            
-            let partnerText = '';
-            if (player.partnerId) {
-                const partner = players.find(p => p.id === player.partnerId);
-                partnerText = partner ? ` <small style="color: #666;">(Paired with: ${partner.name})</small>` : '';
-            }
-
-            div.innerHTML = `
-                <div>
-                    <strong>${player.name}</strong> 
-                    <span class="flight-badge">Flight ${player.flight}</span>
-                    ${partnerText}
-                </div>
-                <div>
-                    <button class="btn-edit" onclick="editPlayer(${player.id})">Edit</button>
-                    <button class="btn-danger" onclick="deletePlayer(${player.id})">Remove</button>
-                </div>
-            `;
+            div.innerHTML = `<div><strong>${p.name}</strong> <span class="flight-badge">${p.flight}</span></div>
+                             <div><button class="btn-edit" onclick="editPlayer(${p.id})">Edit</button>
+                             <button class="btn-danger" onclick="deletePlayer(${p.id})">X</button></div>`;
             playerListDiv.appendChild(div);
         });
     }
 
-    // Edit Functionality
-    window.editPlayer = function(id) {
-        const player = players.find(p => p.id === id);
-        if (!player) return;
-
+    window.deletePlayer = (id) => { players = players.filter(p => p.id !== id); renderPlayerList(); };
+    window.editPlayer = (id) => { 
+        const p = players.find(x => x.id === id);
+        golferNameInput.value = p.name;
+        golferFlightSelect.value = p.flight;
         editingPlayerId = id;
-        golferNameInput.value = player.name;
-        golferFlightSelect.value = player.flight;
-        btnAddGolfer.textContent = "Update Golfer";
-
-        if (player.partnerId) {
-            hasPartnerCheckbox.checked = true;
-            populatePartnerDropdown(player.partnerId);
-            partnerSelectContainer.classList.remove('hidden');
-            
-            if (!partnerSelect.querySelector(`option[value="${player.partnerId}"]`)) {
-                const partnerObj = players.find(p => p.id === player.partnerId);
-                if (partnerObj) {
-                    const opt = document.createElement('option');
-                    opt.value = partnerObj.id;
-                    opt.textContent = `${partnerObj.name} (Flight ${partnerObj.flight})`;
-                    partnerSelect.appendChild(opt);
-                }
-            }
-            partnerSelect.value = player.partnerId;
-        } else {
-            hasPartnerCheckbox.checked = false;
-            partnerSelectContainer.classList.add('hidden');
-        }
+        btnAddGolfer.textContent = "Update";
     };
 
-    // Remove Functionality
-    window.deletePlayer = function(id) {
-        const player = players.find(p => p.id === id);
-        if (player && player.partnerId) {
-            const partner = players.find(p => p.id === player.partnerId);
-            if (partner) partner.partnerId = null;
-        }
-        
-        players = players.filter(p => p.id !== id);
-        if (editingPlayerId === id) resetForm();
-        renderPlayerList();
-    };
+    document.getElementById('btn-done-3').onclick = () => { currentPrioritySize = 3; generate(); };
+    document.getElementById('btn-done-4').onclick = () => { currentPrioritySize = 4; generate(); };
+    document.getElementById('btn-shuffle').onclick = () => generate();
+    document.getElementById('btn-back').onclick = () => { document.getElementById('page-2').classList.add('hidden'); document.getElementById('page-1').classList.remove('hidden'); };
 
+    function generate() {
+        const total = players.length;
+        if (!total) return;
 
-    // --- MATRIX-DRAFTING COMPOSITION ENGINE ---
-
-    document.getElementById('btn-done-3').addEventListener('click', () => { currentPrioritySize = 3; generateGroups(); });
-    document.getElementById('btn-done-4').addEventListener('click', () => { currentPrioritySize = 4; generateGroups(); });
-    document.getElementById('btn-shuffle').addEventListener('click', () => { generateGroups(); });
-    document.getElementById('btn-back').addEventListener('click', () => {
-        page2.classList.add('hidden');
-        page1.classList.remove('hidden');
-    });
-
-    function generateGroups() {
-        if (players.length === 0) {
-            alert("Please add some golfers first.");
-            return;
-        }
-
-        const totalPlayers = players.length;
-        let numGroupsOf4 = 0;
-        let numGroupsOf3 = 0;
-
+        let n4 = 0, n3 = 0;
         if (currentPrioritySize === 4) {
-            numGroupsOf4 = Math.floor(totalPlayers / 4);
-            let remainder = totalPlayers % 4;
-            if (remainder === 1 && numGroupsOf4 > 0) {
-                numGroupsOf4 -= 1;
-                numGroupsOf3 += 3;
-            } else if (remainder === 2 && numGroupsOf4 > 0) {
-                numGroupsOf4 -= 1;
-                numGroupsOf3 += 2;
-            } else if (remainder === 3) {
-                numGroupsOf3 += 1;
-            }
+            n4 = Math.floor(total / 4);
+            let rem = total % 4;
+            if (rem === 1 && n4 > 0) { n4--; n3 += 3; }
+            else if (rem === 2 && n4 > 0) { n4--; n3 += 2; }
+            else if (rem === 3) { n3++; }
         } else {
-            numGroupsOf3 = Math.floor(totalPlayers / 3);
-            let remainder = totalPlayers % 3;
-            if (remainder === 1 && numGroupsOf3 > 0) {
-                numGroupsOf3 -= 1;
-                numGroupsOf4 += 1;
-            } else if (remainder === 2 && numGroupsOf3 > 1) {
-                numGroupsOf3 -= 2;
-                numGroupsOf4 += 2;
-            } else if (remainder === 2 && numGroupsOf3 === 1) {
-                numGroupsOf3 = 0;
-                numGroupsOf4 = 1;
-            }
+            n3 = Math.floor(total / 3);
+            let rem = total % 3;
+            if (rem === 1 && n3 > 0) { n3--; n4++; }
+            else if (rem === 2 && n3 > 1) { n3 -= 2; n4 += 2; }
         }
 
-        let totalTargetSlots = (numGroupsOf4 * 4) + (numGroupsOf3 * 3);
-        while (totalTargetSlots !== totalPlayers) {
-            if (totalTargetSlots < totalPlayers) {
-                numGroupsOf3++;
-            } else {
-                if (numGroupsOf3 > 0) numGroupsOf3--;
-                else numGroupsOf4--;
-            }
-            totalTargetSlots = (numGroupsOf4 * 4) + (numGroupsOf3 * 3);
-        }
+        const groups = [];
+        for (let i = 0; i < n4; i++) groups.push({ max: 4, members: [] });
+        for (let i = 0; i < n3; i++) groups.push({ max: 3, members: [] });
 
-        const totalGroups = numGroupsOf4 + numGroupsOf3;
+        let pool = [...players].sort(() => Math.random() - 0.5);
+        const processed = new Set();
         
-        let groups = [];
-        for (let i = 0; i < totalGroups; i++) {
-            groups.push({
-                maxSize: (i < numGroupsOf4) ? 4 : 3,
-                members: []
-            });
-        }
-
-        let pairedEntities = [];
-        let processedIds = new Set();
-        let shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
-
-        shuffledPlayers.forEach(p => {
-            if (processedIds.has(p.id)) return;
-            if (p.partnerId) {
-                const partner = shuffledPlayers.find(part => part.id === p.partnerId);
-                if (partner) {
-                    pairedEntities.push([p, partner]);
-                    processedIds.add(p.id);
-                    processedIds.add(partner.id);
+        // Handle Pairs First
+        pool.forEach(p => {
+            if (processed.has(p.id) || !p.partnerId) return;
+            const partner = pool.find(x => x.id === p.partnerId);
+            if (partner) {
+                const g = groups.find(x => x.max - x.members.length >= 2);
+                if (g) {
+                    g.members.push(p, partner);
+                    processed.add(p.id); processed.add(partner.id);
                 }
             }
         });
 
-        pairedEntities.forEach(pair => {
-            let availableGroup = groups.find(g => (g.maxSize - g.members.length) >= 2);
-            if (availableGroup) {
-                availableGroup.members.push(...pair);
-            }
-        });
-
-        let flightBuckets = { 'A': [], 'B': [], 'C': [], 'D': [] };
-        shuffledPlayers.forEach(p => {
-            if (!processedIds.has(p.id)) {
-                flightBuckets[p.flight].push(p);
-            }
-        });
-
-        Object.keys(flightBuckets).forEach(f => flightBuckets[f].sort(() => Math.random() - 0.5));
-
-        let masterDraftList = [];
-        let tiers = ['A', 'B', 'C', 'D'];
-        let active = true;
-        while (active) {
-            active = false;
-            tiers.forEach(t => {
-                if (flightBuckets[t].length > 0) {
-                    masterDraftList.push(flightBuckets[t].pop());
-                    active = true;
-                }
-            });
+        // Draft remaining by flight
+        const remaining = pool.filter(p => !processed.has(p.id));
+        const flights = { A: [], B: [], C: [], D: [] };
+        remaining.forEach(p => flights[p.flight].push(p));
+        
+        const draft = [];
+        let hasMore = true;
+        while (hasMore) {
+            hasMore = false;
+            ['A','B','C','D'].forEach(f => { if(flights[f].length) { draft.push(flights[f].pop()); hasMore = true; }});
         }
 
-        masterDraftList.forEach(player => {
-            let bestGroup = groups.find(g => 
-                g.members.length < g.maxSize && 
-                !g.members.some(m => m.flight === player.flight)
-            );
-
-            if (!bestGroup) {
-                bestGroup = groups.find(g => 
-                    g.members.length < g.maxSize && 
-                    g.members.filter(m => m.flight === player.flight).length === 1
-                );
-            }
-
-            if (!bestGroup) {
-                bestGroup = groups.find(g => g.members.length < g.maxSize);
-            }
-
-            if (bestGroup) {
-                bestGroup.members.push(player);
-            }
+        draft.forEach(p => {
+            let g = groups.find(x => x.members.length < x.max && !x.members.some(m => m.flight === p.flight));
+            if (!g) g = groups.find(x => x.members.length < x.max);
+            if (g) g.members.push(p);
         });
 
         renderGroups(groups);
-        page1.classList.add('hidden');
-        page2.classList.remove('hidden');
+        document.getElementById('page-1').classList.add('hidden');
+        document.getElementById('page-2').classList.remove('hidden');
     }
 
     function renderGroups(groups) {
         groupsContainer.innerHTML = '';
-        
-        groups.forEach((group, index) => {
+        groups.forEach((g, i) => {
             const card = document.createElement('div');
             card.className = 'group-card';
-            
-            let membersHtml = '';
-            group.members.forEach(m => {
-                const titleCasedName = toTitleCase(m.name);
-                
-                membersHtml += `
-                    <div class="group-member">
-                        <span>${titleCasedName}</span>
-                        <span class="flight-badge">Flight ${m.flight}</span>
-                    </div>
-                `;
+            let html = `<h3>Group ${i+1} (${g.members.length}-some)</h3>`;
+            g.members.forEach(m => {
+                html += `<div class="group-member"><span>${toTitleCase(m.name)}</span><span class="flight-badge">${m.flight}</span></div>`;
             });
-
-            card.innerHTML = `
-                <h3>Group ${index + 1} (${group.members.length}-some)</h3>
-                ${membersHtml || '<p style="color:#bcbcbc">Empty Group</p>'}
-            `;
+            card.innerHTML = html;
             groupsContainer.appendChild(card);
         });
     }
